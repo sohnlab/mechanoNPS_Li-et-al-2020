@@ -2,11 +2,11 @@ clear all
 
 %% Set variables 
 
-D=34.7;     %effective D of node-pore[um]
+D=27.65;     %effective D of node-pore[um]
 L=6750;     %channel length [um]
-w_np=25;    %channel width at node-pore
+w_np=22;    %channel width at node-pore
 wc=10.5;
-h=27.34;    %channel height
+h=22.07;    %channel height
 f=50;     %[kHz] sampling frequency
 
 %% readout pulse
