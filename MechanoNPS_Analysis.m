@@ -1,29 +1,26 @@
 
-Nstart =1;
-FiletoRead=50;
+Nstart =1;  %starting file number
+FiletoRead=50; %number of files you want to readout
 
 file_num = [Nstart,FiletoRead]; % file numbers, 1 is the first #, 2 is the number of files to read after
 Fs=60;  %sampling frequency [kHz]
 Ndown=10;    %down sampling period
 buffer_input = 8000;  %buffer to measure baseline current at the both end of signal
 MaxSignalSize= 12000; %Maximum length of signal to set matrix
-gap = 4000;
+gap = 4000; 
 error=0.08;
 Thr_in=1e-4;      %initial value for threshold finding
 
-%% read a new data file
+%% read a data file
+% set route and file name of data file
 load ('/Users/junghyun/Documents/Research/Collaboration/Mark Lab/Exp Data/180227_TEST8/mcf7-houseAir-dev2.mat','data');
+
 data_temp=data(2,:);
-mydata=data_temp(Nstart*Fs*1000:(Nstart+FiletoRead)*Fs*1000);
-
-clear data_temp data_whole data 
-
-y=mydata;
-%y=cat(1,mydata{:}); % concatenate data
+y=data_temp(Nstart*Fs*1000:(Nstart+FiletoRead)*Fs*1000);
 y_smoothed=fastsmooth(y',100,1,1); % perform smoothing
 y_detrend=detrend(y_smoothed); % remove trend
 
-clear myfilename mydata i k file_name file_id FiletoRead Nstart thresholds,
+clear myfilename mydata i k file_name file_id FiletoRead Nstart thresholds data_temp
 
 %% find outliers && group by clumps
 
@@ -250,6 +247,7 @@ if isempty(fi)
     fi=1;
 end
 
+% analyzed data saved as 'MeasureOut' matrix with file name of 'MeasureOut_trialXXX.mat'
 if exist('OUT')
 OUT( :, all( ~any( OUT ), 1 ) ) = [];
     for i=1:size(OUT,2) 
