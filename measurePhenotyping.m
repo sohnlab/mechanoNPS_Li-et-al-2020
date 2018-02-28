@@ -29,7 +29,7 @@ for i=1:size(MeasureOut,2)
     dD=(dIc*L*(D2^2)/(I+dIc*L*0.8/D2))^(1/3);
     dD=pi.*(dD.^2)./(4*wc); %deformed diameter
     
-    Phenotyping(:,i)=[MeasureOut(1,i); d; dT; dTc; dD; Tr]; %file #, cell diameter, transit time at pore[ms], transit time at cont. channel[ms], deformed diameter, recovery time
+    Phenotyping(:,i)=[MeasureOut(1,i); d; 700/dT; dTc; dD; Tr]; %file #, cell diameter, velocity at pore[mm/s], transit time at cont. channel[ms], deformed diameter, recovery time
 end
 
     Phenotyping=transpose(Phenotyping);
