@@ -1,31 +1,25 @@
 
-Nstart =50;
+Nstart =1;
 FiletoRead=50;
 
 file_num = [Nstart,FiletoRead]; % file numbers, 1 is the first #, 2 is the number of files to read after
-Fs=50;  %sampling frequency [kHz]
+Fs=60;  %sampling frequency [kHz]
 Ndown=10;    %down sampling period
 buffer_input = 8000;  %buffer to measure baseline current at the both end of signal
 MaxSignalSize= 12000; %Maximum length of signal to set matrix
 gap = 4000;
 error=0.08;
-Thr_in=1.5e-4;      %initial value for threshold finding
+Thr_in=1e-4;      %initial value for threshold finding
 
-%% read data files
-mydata = cell(1,1+file_num(2));   
-    k = file_num(1); % initialize reads
-    i = 1;
-    while (k < file_num(1) + file_num(2))
-        file_name = sprintf('trial1_%05d.txt',k);
-        file_id = fopen(file_name);
-        file_data = textscan(file_id,'%f');
-        mydata{i} = file_data{:};
-        k = k + 1;
-        i = i + 1;
-        fclose(file_id);
-    end
-    
-y=cat(1,mydata{:}); % concatenate data
+%% read a new data file
+load ('/Users/junghyun/Documents/Research/Collaboration/Mark Lab/Exp Data/180227_TEST8/mcf7-houseAir-dev2.mat','data');
+data_temp=data(2,:);
+mydata=data_temp(Nstart*Fs*1000:(Nstart+FiletoRead)*Fs*1000);
+
+clear data_temp data_whole data 
+
+y=mydata;
+%y=cat(1,mydata{:}); % concatenate data
 y_smoothed=fastsmooth(y',100,1,1); % perform smoothing
 y_detrend=detrend(y_smoothed); % remove trend
 
@@ -256,12 +250,13 @@ if isempty(fi)
     fi=1;
 end
 
+if exist('OUT')
 OUT( :, all( ~any( OUT ), 1 ) ) = [];
-
-for i=1:size(OUT,2) 
-        MeasureOut(:,fi)=OUT(:,i);
-        save(savename,'MeasureOut')
-        fi=fi+1;
+    for i=1:size(OUT,2) 
+            MeasureOut(:,fi)=OUT(:,i);
+            save(savename,'MeasureOut')
+            fi=fi+1;
+    end
 end
 
 close all
