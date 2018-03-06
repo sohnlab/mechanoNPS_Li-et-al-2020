@@ -137,8 +137,11 @@ end
         elseif dI4 < dI*(1-error) && dI5 < dI*(1-error) && dI6 < dI*(1-error) % never recovers
             Tr = inf;
 
-        else
+        elseif abs(dI4-dI)/dI < error
             Tr = 0; 
+        
+        else
+            Tr = 'NA';        
         end
         
         if dI>0 && dI1>0
