@@ -141,7 +141,7 @@ end
             Tr = 0; 
         
         else
-            Tr = 'NA';        
+            Tr = -10;        
         end
         
         if dI>0 && dI1>0
