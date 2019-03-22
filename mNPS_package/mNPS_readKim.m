@@ -15,7 +15,7 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
         data_vector = -data_vector;
     end
     
-    y_smoothed = fastsmooth(data_vector',200,1,1); % perform rectangular smoothing
+    y_smoothed = mNPS_fastsmooth(data_vector',200,1,1); % perform rectangular smoothing
     
     ym = downsample(y_smoothed,N); % downsample by period N
     
