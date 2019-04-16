@@ -9,7 +9,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
     
     load(filepath,'data');
     data = data(2,:);
-    sampleRate = 50000;
+    sampleRate = 60000;
     
     if nargin < 2
         thresholds = [1e-4, 1e-3];
