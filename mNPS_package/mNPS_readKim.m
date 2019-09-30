@@ -1,5 +1,5 @@
 function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRate, ...
-    thresholds, plotflag )
+    thresholds, plotflag, fitflag )
 % [ OUT, empty, auto_thresh_value ] = measureKimNPS( data_vector, sampleRate,
 %     thresholds, plotflag, fitflag )
 %   Reads mNPS data and returns OUT matrix
@@ -232,7 +232,7 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
     %% SECTION 9: Extract Data for mNPS-R
     
     total_segs = 6;
-    out = ones(length(pulse_series) - (total_segs - 1),8);
+    out = ones(length(pulse_series) - (total_segs - 1),11);
     for k = 1:length(pulse_series)+1 - total_segs
         start_index = pulse_series(k,1); % starting index
         I = pulse_series(k,3); % baseline current
@@ -263,11 +263,54 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
         else
             Tr = Inf;
         end
+        
+        if fitflag
             
-        out(k,:) = [start_index, I, dI, dIC, dICstd, dT, dTsq, Tr];
+            % populate vector rT with time-points of recovery pulses
+            rT = [0, ...
+                (pulse_series(k+3,2)-pulse_series(k+2,1))/Fs*N, ...
+                (pulse_series(k+4,2)-pulse_series(k+2,1))/Fs*N];
+            
+            % populate vector rdI with current drop-amplitudes of recovery
+            % pulses. Anticipate that rdI should increase
+            %
+            % NOTE: cannot approximate size for ellipsoid particle
+            rdI = [abs(dI4), ...
+                abs(dI5), ...
+                abs(dI6)];
+            
+            % use MATLAB fit() to fit a linear polynomial to recovery data.
+            % fo has fields pertaining to fit parameters:
+            %   fo.p1 is the slope of the line, not sign-bounded
+            %   fo.p2 is the y-intercept, not sign-bounded
+            % gof has fields pertaining to goodness of fit, but only
+            % gof.rsquare will be used
+            [fo, gof] = fit(rT',rdI','poly1');
+            
+        else
+            fo.p1 = 0;
+            fo.p2 = 0;
+            gof.rsquare = 0;
+        end
+            
+        out(k,:) = [start_index, I, dI, dIC, dICstd, dT, dTsq, Tr, fo.p1, fo.p2, gof.rsquare];
         
     end
+    
+    if fitflag
         
+        Pix_SS = get(0,'screensize');
+        
+        figf = figure(43);
+        title('Curve Fit'),
+        ffunc = @(x) fo.p2+fo.p1*x;
+        fplot(ffunc,[rT(1), rT(end)]),
+        hold on, scatter(rT,rdI), hold off,
+        figsize = [0.70 0.6 1/3 2/9]*Pix_SS(4);
+        set(figf,'units','pixels','pos',figsize);
+        
+    end
+
 
     %% Section 9b: export data
     
@@ -280,7 +323,7 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
     wNP = 22;
     DC = Dnp*(wC/wNP)^(0.5);
     
-    calculated = zeros(size(out,1),5);
+    calculated = zeros(size(out,1),8);
     
     % diameter
     calculated(:,1) = ((out(:,3)./out(:,2)*Dnp^2*L)./ ...
@@ -304,6 +347,10 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
     
     % recovery time
     calculated(:,7) = out(:,8);
+    
+    % recovery rate
+    calculated(:,8) = fo.p1;
+    
     
     out = [out, calculated];
     

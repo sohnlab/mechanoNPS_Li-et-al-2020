@@ -17,7 +17,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
     end
     
     %% read all, search for pulses
-    all_out = mNPS_readKim(data, sampleRate, thresholds, false);
+    all_out = mNPS_readKim(data, sampleRate, thresholds, false, false);
     
     %% remove duplicate files to read
         
@@ -44,7 +44,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
                 
                 iterdata = data(20*(uni_win(i)-200):20*(uni_win(i)+800));
                 % measure a new pulse
-                [iter_out, emptyflag] = mNPS_readKim(iterdata, sampleRate, new_th, false); 
+                [iter_out, emptyflag] = mNPS_readKim(iterdata, sampleRate, new_th, false, false); 
                 % iter_out: output of one iteration
                 % emptyflag: skip pulse if TRUE
                 % auto: values for computing auto-threshold value
@@ -58,7 +58,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
                     i = i+1;
                     searchflag = true;
                 else
-                    [iter_out, ~, auto] = mNPS_readKim(iterdata, sampleRate, new_th, true);
+                    [iter_out, ~, auto] = mNPS_readKim(iterdata, sampleRate, new_th, true, true);
                     searchflag = false;
                 end
                 
