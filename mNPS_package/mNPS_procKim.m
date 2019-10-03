@@ -62,7 +62,14 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
                     searchflag = false;
                 end
                 
-            catch
+            catch ME
+                
+                %% print errors to command line for debug purposes
+                fprintf('-----\n%s\n',ME.identifier),
+                for errorstack_i = 1:length(ME.stack)
+
+                    fprintf('Line: %d --- %s\n',ME.stack(errorstack_i).line,ME.stack(errorstack_i).name),
+                end
                 if retryflag % retry once with default thresholds
                     new_th = thresholds;
                     searchflag = true;
@@ -103,7 +110,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
             i = i+1;
             new_th = thresholds;
             
-        % continue to save data, user decides which window to save
+        % save data, auto-choose window
             case {'P','p', '.', '/'}
             
 %             fprintf('Ok, displaying windows and file numbers...\n'),
@@ -111,7 +118,6 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
             % make and display table of pulses and indices
             indices = iter_out(:,1); winds = 1:length(indices);
             table_data = [winds', indices];
-            
             
             % clean up empty table entries
             cci = 1;
@@ -125,10 +131,12 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
                 end
             end
                         
-            WindowTable = array2table(table_data,'VariableNames',{'Window','StartIndex'}),
             
-            if ~isempty(WindowTable) % make sure WindowTable is NOT empty                        
+            if ~isempty(table_data) % make sure WindowTable is NOT empty                        
     %             iter_out_index = input('Select window to save:\n---\n');
+     
+                WindowTable = array2table(table_data,'VariableNames',{'Window','StartIndex'}),
+                
                 iter_out_index = 1;
                 fprintf('Ok, saving data...\n');
 
@@ -148,6 +156,50 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
                 fprintf('Pulse table is empty; force retry\n');
                 new_th = thresholds; % reset thresholds
             end
+            
+            % save data, user picks window
+            case {'//'}
+            
+%             fprintf('Ok, displaying windows and file numbers...\n'),
+            
+            % make and display table of pulses and indices
+            indices = iter_out(:,1); winds = 1:length(indices);
+            table_data = [winds', indices];
+            
+            % clean up empty table entries
+            cci = 1;
+            stopc = size(table_data,1);
+            while(cci <= stopc)
+                if table_data(cci,2) == 0
+                    table_data(cci,:) = [];
+                    stopc = stopc - 1;
+                else
+                    cci = cci + 1;
+                end
+            end
+            
+            if ~isempty(table_data) % make sure WindowTable is NOT empty
+                        
+                WindowTable = array2table(table_data,'VariableNames',{'Window','StartIndex'}),                        
+                iter_out_index = input('Select window to save:\n---\n');
+                fprintf('Ok, saving data...\n');
+
+                if (0 < iter_out_index) && (iter_out_index <= max(winds))
+
+                    output_matrix(good_index,:) = iter_out(iter_out_index,:); % save to output matrix
+                    output_matrix(good_index,1) = output_matrix(good_index,1) + uni_win(i) - 200;
+                    good_index = good_index + 1;
+                    i = i+1;
+                    new_th = thresholds; % reset thresholds
+                else
+                    fprintf('Unrecognized input.\n');
+                    beep,
+                end      
+                
+            else
+                fprintf('Pulse table is empty; force retry\n');
+                new_th = thresholds; % reset thresholds
+            end    
             
         % in case of bad threshold, ask for new thresholds and retry   
             case {'T','t'}
