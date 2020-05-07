@@ -1,6 +1,6 @@
 function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRate, ...
     thresholds, plotflag, fitflag )
-% [ OUT, empty, auto_thresh_value ] = measureLiNPS( data_vector, sampleRate,
+% [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRate,
 %     thresholds, plotflag, fitflag )
 %   Reads mNPS data and returns OUT matrix
 
@@ -17,13 +17,19 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRat
     
     y_smoothed = fastsmooth(data_vector,200,1,1); % perform rectangular smoothing
     
+%     d = designfilt('bandstopiir','FilterOrder',2, ...
+%                'HalfPowerFrequency1',59,'HalfPowerFrequency2',61, ...
+%                'DesignMethod','butter','SampleRate',sampleRate);
+%            
+%     y_smoothed = filtfilt(d,y_smoothed);
+    
     ym = downsample(y_smoothed,N); % downsample by period N
     
     if size(ym,1) < size(ym,2)
         ym = ym'; % transpose if vector is of the wrong dimension
     end
     
-    y_detrend = ym - ASLS(ym,1e9,1e-4,10); % remove trend
+    y_detrend = ym - ASLS(ym,1e9,3e-3,20); % remove trend
     
     
     %% SECTION 2: threshold signal by differences
@@ -42,9 +48,10 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRat
     while (ym_diff(squeeze_begin) <= -thresholds(2))
         squeeze_begin = squeeze_begin + 1;
     end
-
-    squeeze_end = find(ym_diff(squeeze_begin+20:end) >= thresholds(2),1); % find end of squeeze
-    ym_diff(squeeze_begin+1:squeeze_begin+squeeze_end+20) = 0; % zero out the squeeze channel
+    
+    expected_length = 350;
+    squeeze_end = find(ym_diff(squeeze_begin+expected_length:end) >= thresholds(2),1); % find end of squeeze
+    ym_diff(squeeze_begin+1:squeeze_begin+squeeze_end+expected_length) = 0; % zero out the squeeze channel
 
     %% SECTION 3: identify nonzero differences, nz_mat is the matrix of nonzero differences
 
@@ -136,25 +143,26 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRat
         empty = false;
     end
 
+    % take top and bottom 3 values
+    nsorted_d = sort(ym_diff);
+    min_vals = nsorted_d(1:3);
+
+    psorted_d = sort(ym_diff,'descend');
+    max_vals = psorted_d(1:3);
+
+    % set auto-thresholds
+    if abs(min_vals(3)) < abs(max_vals(3))
+        auto_thresh_value = abs(min_vals(3));
+    else
+        auto_thresh_value = abs(max_vals(3));
+    end
+    
     if plotflag == true
         Pix_SS = get(0,'screensize');
         figh = figure(42); 
         figsize = [0.1 0.1 0.55 0.75]*Pix_SS(4);
         set(figh,'units','pixels','pos',figsize);
         
-        % take top and bottom 3 values
-        nsorted_d = sort(ym_diff);
-        min_vals = nsorted_d(1:3);
-        
-        psorted_d = sort(ym_diff,'descend');
-        max_vals = psorted_d(1:3);
-        
-        % set auto-thresholds
-        if abs(min_vals(3)) < abs(max_vals(3))
-            auto_thresh_value = abs(min_vals(3));
-        else
-            auto_thresh_value = abs(max_vals(3));
-        end
         
         % difference plot
         ax1 = subplot(3,1,1);
@@ -162,7 +170,7 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRat
         difp = plot(ym_diff,'k-'); difp.LineWidth = 1;
         title('y_{diff}'), set(gca,'FontSize',10),
         grid(ax1,'on'), ax1.XMinorGrid = 'on';
-        axis([0, length(ym_diff), 1.1*mean(min_vals), 1.1*mean(max_vals)]),
+        axis([0, length(ym_diff), 1.1*(min_vals(1)), 1.1*(max_vals(1))]),
         for i = 1:length(max_vals)
             label_str = sprintf('%3.3e',min_vals(i));
             text(i*600,1.35*max_vals(1),label_str,'FontSize',12);
@@ -204,17 +212,25 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRat
     %       rectangular pulses
     
     i=1;
-    k = 0;
-    backset = 10;
+    k=1;
+    backset = 30;
     pulse_series = ones(length(nz_mat),5);
     while (i < length(nz_mat))
         if nz_mat(2,i) < 0 && nz_mat(2,i+1) > 0 % starts negative and flips sign
-            k = k + 1;
             pulse_series(k,1) = nz_mat(1,i);  % Start index
             pulse_series(k,2) = nz_mat(1,i+1); % End index
-            pulse_series(k,3) = mean(ym((nz_mat(1,i)-backset):(nz_mat(1,i)-backset+10))); % normalized baseline current
+            if i == 1
+                if nz_mat(1,i)- backset < 1
+                    pulse_series(k,3) = mean(ym((nz_mat(1,1)):(nz_mat(1,i)-5)));
+                else
+                    pulse_series(k,3) = mean(ym((nz_mat(1,i)-backset):(nz_mat(1,i)-5))); % normalized baseline current
+                end
+            else
+                pulse_series(k,3) = max(ym(nz_mat(1,i-1):nz_mat(1,i))); % normalized baseline current
+            end
             pulse_series(k,4) = mean(y_detrend(nz_mat(1,i)+1:nz_mat(1,i+1)-1)); % avg current drop between pulses
             pulse_series(k,5) = std(y_detrend(nz_mat(1,i)+1:nz_mat(1,i+1)-1)); % std dev of current drop
+            k = k + 1;
         end
         i=i+1;
     end
@@ -224,6 +240,18 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRat
     stopc = size(pulse_series,1);
     while(cci <= stopc)
         if (pulse_series(cci,1) == 1 && pulse_series(cci,2) == 1)
+            pulse_series(cci,:) = [];
+            stopc = stopc - 1;
+        else
+            cci = cci + 1;
+        end
+    end
+    
+    % remove short pulses
+    cci = 1;
+    stopc = size(pulse_series,1);
+    while(cci <= stopc)
+        if (abs(pulse_series(cci,1) - pulse_series(cci,2)) < 10)
             pulse_series(cci,:) = [];
             stopc = stopc - 1;
         else
@@ -249,10 +277,29 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRat
         rT = (mean(pulse_series(k+2:k+11,1:2),2) - pulse_series(k+1,2))./Fs*N; % recovery time points (ms)
         
         if fitflag
-            rdI_baseline = rI - min(rI);
-            rdI_log = log(rdI_baseline+1e-4);
+            [rI_min, rI_MI] = min(rI);
+            rdI_baseline = rI(1:end) - rI_min;
+            
+            if rI_MI == 10
+                I_inf = rdI_baseline(rI_MI-1);
+            elseif rI_MI == 1
+                I_inf = rdI_baseline(rI_MI+1);
+            else
+                I_inf = mean([rdI_baseline(rI_MI-1), rdI_baseline(rI_MI+1)]);
+            end
+            
+            rdI_baseline(rI_MI) = I_inf;
+                
+            rdI_log = log(rdI_baseline);
+            rT_fit = rT(1:end);
+            if any(isnan(rdI_log))
+                rT_fit(find(isnan(rdI_log)) == 1) = [];
+                rdI_log(find(isnan(rdI_log)) == 1) = [];
+            end
     %             fiteqn = fittype( @(a,b,x) a*x.^b);
-            [fo, gud] = fit(rT,rdI_log, 'poly1');
+            [fo, gud] = fit(rT_fit,rdI_log, 'poly1', ... %'Robust','Bisquare', ...
+                'Weights', [80 80 50 50 1 1 1 1 1 1], ...
+                'Exclude', find(rdI_log == min(rdI_log)));
         else
             fo.p1 = 0;
             fo.p2 = 0;
@@ -268,10 +315,9 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readLi( data_vector, sampleRat
         Pix_SS = get(0,'screensize');
         
         figf = figure(43);
-        title('Curve Fit'),
         ffunc = @(x) fo.p2+fo.p1*x;
-        fplot(ffunc,[rT(1), rT(end)]),
-        hold on, scatter(rT,rdI_log), hold off,
+        fplot(ffunc,[rT_fit(1), rT_fit(end)]),
+        hold on, scatter(rT_fit,rdI_log), hold off,
         figsize = [0.70 0.6 1/3 2/9]*Pix_SS(4);
         set(figf,'units','pixels','pos',figsize);
         

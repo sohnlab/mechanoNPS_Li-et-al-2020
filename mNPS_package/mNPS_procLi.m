@@ -28,6 +28,7 @@ function [ output_matrix ] = mNPS_procLi( filepath, thresholds )
     i = 1;
     new_th = thresholds; % reset threshold values
     warning('off', 'curvefit:cfit:subsasgn:coeffsClearingConfBounds'); % annoying warning when fit fails to converge
+    warning off curvefit:fit:iterationLimitReached
     
     while (i < size(uni_win,1))
         
@@ -40,7 +41,7 @@ function [ output_matrix ] = mNPS_procLi( filepath, thresholds )
                 fprintf('\nNow reading index: %d\n',uni_win(i));
                 fprintf('Progress: %2.1f %%\n',i/length(uni_win)*100);
                 
-                iterdata = data(20*(uni_win(i)-200):20*(uni_win(i))+5.5e4);
+                iterdata = data(20*(uni_win(i)-200):20*(uni_win(i))+7.6e4);
                 % measure a new pulse
                 [iter_out, emptyflag] = mNPS_readLi(iterdata, sampleRate, new_th, false, false); 
                 % iter_out: output of one iteration
@@ -60,7 +61,13 @@ function [ output_matrix ] = mNPS_procLi( filepath, thresholds )
                     searchflag = false;
                 end
                 
-            catch
+            catch ME
+                
+                fprintf('-----\n%s\n',ME.identifier),
+                for errorstack_i = 1:length(ME.stack)
+
+                    fprintf('Line: %d --- %s\n',ME.stack(errorstack_i).line,ME.stack(errorstack_i).name),
+                end
                 if retryflag % retry once with default thresholds
                     new_th = thresholds;
                     searchflag = true;
@@ -91,18 +98,64 @@ function [ output_matrix ] = mNPS_procLi( filepath, thresholds )
 %                     ]);
         fprintf('\n%d cell(s) saved\n',good_index-1);
         fprintf('\nCurrent thresholds: %3.2e, %3.2e\n',new_th);
+        commandwindow,
         OK = input('---\n','s');
         
         %% input case structures
         switch OK
             case [] % empty
             
-            fprintf('Ok, skipping this pulse...\n');
+%             fprintf('Ok, skipping this pulse...\n');
             i = i+1;
             new_th = thresholds;
             
-        % continue to save data, user decides which window to save
+        % save data, auto-choose window
             case {'P','p', '.', '/'}
+            
+%             fprintf('Ok, displaying windows and file numbers...\n'),
+            
+            % make and display table of pulses and indices
+            indices = iter_out(iter_out(:,1) > 100); winds = 1:length(indices);
+            table_data = [winds', indices];
+            
+            % clean up empty table entries
+            cci = 1;
+            stopc = size(table_data,1);
+            while(cci <= stopc)
+                if table_data(cci,2) == 0
+                    table_data(cci,:) = [];
+                    stopc = stopc - 1;
+                else
+                    cci = cci + 1;
+                end
+            end
+            
+            if ~isempty(table_data) % make sure WindowTable is NOT empty                        
+    %             iter_out_index = input('Select window to save:\n---\n');
+                        
+                WindowTable = array2table(table_data,'VariableNames',{'Window','StartIndex'}),
+                iter_out_index = 1;
+                fprintf('Ok, saving data...\n');
+
+                if (0 < iter_out_index) && (iter_out_index <= max(winds))
+
+                    output_matrix(good_index,:) = iter_out(iter_out_index,:); % save to output matrix
+                    output_matrix(good_index,1) = output_matrix(good_index,1) + uni_win(i) - 200;
+                    good_index = good_index + 1;
+                    i = i+1;
+                    new_th = thresholds; % reset thresholds
+                else
+                    fprintf('Unrecognized input.\n');
+                    beep,
+                end      
+                
+            else
+                fprintf('Pulse table is empty; force retry\n');
+                new_th = thresholds; % reset thresholds
+            end
+            
+            % save data, user picks window
+            case {'//'}
             
 %             fprintf('Ok, displaying windows and file numbers...\n'),
             
@@ -122,23 +175,28 @@ function [ output_matrix ] = mNPS_procLi( filepath, thresholds )
                 end
             end
             
-            array2table(table_data,'VariableNames',{'Window','StartIndex'});
-            
-%             iter_out_index = input('Select window to save:\n---\n');
-            iter_out_index = 1;
-            fprintf('Ok, saving data...\n');
-            
-            if (0 < iter_out_index) && (iter_out_index <= max(winds))
+            if ~isempty(table_data) % make sure WindowTable is NOT empty
+                        
+                WindowTable = array2table(table_data,'VariableNames',{'Window','StartIndex'}),                        
+                iter_out_index = input('Select window to save:\n---\n');
+                fprintf('Ok, saving data...\n');
 
-                output_matrix(good_index,:) = iter_out(iter_out_index,:); % save to output matrix
-                output_matrix(good_index,1) = output_matrix(good_index,1) + uni_win(i) - 200;
-                good_index = good_index + 1;
-                i = i+1;
-                new_th = thresholds; % reset thresholds
+                if (0 < iter_out_index) && (iter_out_index <= max(winds))
+
+                    output_matrix(good_index,:) = iter_out(iter_out_index,:); % save to output matrix
+                    output_matrix(good_index,1) = output_matrix(good_index,1) + uni_win(i) - 200;
+                    good_index = good_index + 1;
+                    i = i+1;
+                    new_th = thresholds; % reset thresholds
+                else
+                    fprintf('Unrecognized input.\n');
+                    beep,
+                end      
+                
             else
-                fprintf('Unrecognized input: please try again.\n');
-                beep,
-            end            
+                fprintf('Pulse table is empty; force retry\n');
+                new_th = thresholds; % reset thresholds
+            end     
             
         % in case of bad threshold, ask for new thresholds and retry   
             case {'T','t'}

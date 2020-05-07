@@ -6,7 +6,7 @@ i = 1;
 
 % erase stuff way too short
 while (i < stop)
-   if (all_out(i,7) < 50) % if it's faster than 50 ms
+   if (all_out(i,7) < 10) % if it's faster than 50 ms
        all_out(i,:) = [];
        stop = stop - 1;      
    else
