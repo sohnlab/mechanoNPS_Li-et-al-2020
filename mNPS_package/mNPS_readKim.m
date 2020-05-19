@@ -1,8 +1,9 @@
-function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRate, ...
+function [ OUT, empty, auto_thresh_value, out_rec_cat ] = mNPS_readKim( data_vector, sampleRate, ...
     thresholds, plotflag, fitflag )
 % [ OUT, empty, auto_thresh_value ] = measureKimNPS( data_vector, sampleRate,
 %     thresholds, plotflag, fitflag )
 %   Reads mNPS data and returns OUT matrix
+%   out_rec_cat = column vector of recovery category {0,1,2,3}
 
     %% SECTION 1: load data and perform basic signal conditioning
     
@@ -233,6 +234,7 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
     
     total_segs = 6;
     out = ones(length(pulse_series) - (total_segs - 1),11);
+    out_rec_cat = ones(size(out,1),1);
     for k = 1:length(pulse_series)+1 - total_segs
         start_index = pulse_series(k,1); % starting index
         I = pulse_series(k,3); % baseline current
@@ -257,15 +259,19 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
 
         if (dI-dI4)/dI < rec_tol % already recovered by 1st recovery segment
             Tr = 0;
+            rec_cat = 0;
 
         elseif (dI-dI5)/dI < rec_tol % not recovered until 2nd recovery segment
             Tr = (pulse_series(k+4,1)-pulse_series(k+2,2))/Fs*N;
+            rec_cat = 1;
 
         elseif (dI-dI6)/dI < rec_tol % not recovered until 3rd recovery segment
             Tr = (pulse_series(k+5,1)-pulse_series(k+2,2))/Fs*N;
+            rec_cat = 2;
             
         else % cell never recovered
             Tr = Inf;
+            rec_cat = 3;
         end
         
         if fitflag
@@ -298,6 +304,7 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
         end
             
         out(k,:) = [start_index, I, dI, dIC, dICstd, dT, dTsq, Tr, fo.p1, fo.p2, gof.rsquare];
+        out_rec_cat(k) = rec_cat;
         
     end
     

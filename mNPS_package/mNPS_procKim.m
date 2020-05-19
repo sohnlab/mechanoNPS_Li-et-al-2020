@@ -1,4 +1,4 @@
-function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
+function [ output_matrix, output_rec_cat ] = mNPS_procKim( filepath, thresholds )
 % [ output_matrix ] = sNPS( start, number_of_files, thresholds )
 %   Reads all sNPS data, analyzes data and returns final output matrix
 %   Needs a vector of 2 thresholds for initial thresholding. Afterwards,
@@ -22,6 +22,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
     %% remove duplicate files to read
         
     [uni_win, output_matrix] = mNPS_cleanKim(all_out);
+    output_rec_cat = 10*ones(size(output_matrix,1),1);
     
     clear all_out,
     %% analyze all time windows, prompt user for input to see if the pulse looks good
@@ -58,7 +59,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
                     i = i+1;
                     searchflag = true;
                 else
-                    [iter_out, ~, auto] = mNPS_readKim(iterdata, sampleRate, new_th, true, true);
+                    [iter_out, ~, auto, iter_rec_cat] = mNPS_readKim(iterdata, sampleRate, new_th, true, true);
                     searchflag = false;
                 end
                 
@@ -144,6 +145,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
 
                     output_matrix(good_index,:) = iter_out(iter_out_index,:); % save to output matrix
                     output_matrix(good_index,1) = output_matrix(good_index,1) + uni_win(i) - 200;
+                    output_rec_cat(good_index) = iter_rec_cat;
                     good_index = good_index + 1;
                     i = i+1;
                     new_th = thresholds; % reset thresholds
@@ -188,6 +190,7 @@ function [ output_matrix ] = mNPS_procKim( filepath, thresholds )
 
                     output_matrix(good_index,:) = iter_out(iter_out_index,:); % save to output matrix
                     output_matrix(good_index,1) = output_matrix(good_index,1) + uni_win(i) - 200;
+                    output_rec_cat(good_index) = iter_rec_cat;
                     good_index = good_index + 1;
                     i = i+1;
                     new_th = thresholds; % reset thresholds
