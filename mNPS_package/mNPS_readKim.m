@@ -248,19 +248,23 @@ function [ OUT, empty, auto_thresh_value ] = mNPS_readKim( data_vector, sampleRa
         dI5 = -pulse_series(k+4,4);
         dI6 = -pulse_series(k+5,4);
         
-        % recovery time determined when post-squeeze NP current drop reaches
-        % pre-squeeze NP current drop
-        
-        if abs(dI6-dI)/dI < 0.08
-            Tr = (pulse_series(k+4,2)-pulse_series(k+2,1))/Fs*N;
-            
-        elseif abs(dI5-dI)/dI < 0.08
-            Tr = (pulse_series(k+3,2)-pulse_series(k+2,1))/Fs*N;
-            
-        elseif abs(dI4-dI)/dI < 0.08
+        % the cell is "recovered" when post-squeeze NP current drop reaches
+        %   pre-squeeze NP current drop or higher (here, within 8% tolerance)
+        % for transient-recovery cells, Tr is calculated as the elapsed time 
+        %   between the end of the contraction segment and the beginning of 
+        %   the recovered segment
+        rec_tol = 0.08;
+
+        if (dI-dI4)/dI < rec_tol % already recovered by 1st recovery segment
             Tr = 0;
+
+        elseif (dI-dI5)/dI < rec_tol % not recovered until 2nd recovery segment
+            Tr = (pulse_series(k+4,1)-pulse_series(k+2,2))/Fs*N;
+
+        elseif (dI-dI6)/dI < rec_tol % not recovered until 3rd recovery segment
+            Tr = (pulse_series(k+5,1)-pulse_series(k+2,2))/Fs*N;
             
-        else
+        else % cell never recovered
             Tr = Inf;
         end
         
