@@ -145,7 +145,7 @@ function [ output_matrix, output_rec_cat ] = mNPS_procKim( filepath, thresholds 
 
                     output_matrix(good_index,:) = iter_out(iter_out_index,:); % save to output matrix
                     output_matrix(good_index,1) = output_matrix(good_index,1) + uni_win(i) - 200;
-                    output_rec_cat(good_index) = iter_rec_cat;
+                    output_rec_cat(good_index) = iter_rec_cat(iter_out_index);
                     good_index = good_index + 1;
                     i = i+1;
                     new_th = thresholds; % reset thresholds
@@ -190,7 +190,7 @@ function [ output_matrix, output_rec_cat ] = mNPS_procKim( filepath, thresholds 
 
                     output_matrix(good_index,:) = iter_out(iter_out_index,:); % save to output matrix
                     output_matrix(good_index,1) = output_matrix(good_index,1) + uni_win(i) - 200;
-                    output_rec_cat(good_index) = iter_rec_cat;
+                    output_rec_cat(good_index) = iter_rec_cat(iter_out_index);
                     good_index = good_index + 1;
                     i = i+1;
                     new_th = thresholds; % reset thresholds
