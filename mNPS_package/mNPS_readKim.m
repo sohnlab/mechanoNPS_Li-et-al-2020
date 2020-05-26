@@ -229,6 +229,7 @@ function [ OUT, empty, auto_thresh_value, out_rec_cat ] = mNPS_readKim( data_vec
             cci = cci + 1;
         end
     end
+    pulse_series(isnan(pulse_series)) = 0; % clean up NaNs
     
     %% SECTION 9: Extract Data for mNPS-R
     
